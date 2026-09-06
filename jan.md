@@ -12,7 +12,7 @@ always returns a hardcoded 402 response with a placeholder wallet address. You'r
 continuing from there today.
 
 ---
-
+o
 ## TODAY
 
 ### Prompt 1 — Make the 402 conditional on a risk object
