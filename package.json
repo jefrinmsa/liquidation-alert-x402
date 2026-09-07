@@ -4,12 +4,15 @@
   "description": "Hackathon project — liquidation risk alert API",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "pay": "node payer-test.js"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@hashgraph/sdk": "^2.55.0",
+    "dotenv": "^16.4.7",
     "express": "^4.21.0"
   }
 }
