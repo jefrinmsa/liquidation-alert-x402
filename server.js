@@ -27,7 +27,7 @@ app.get("/risk-alert", (req, res) => {
       ...risk,
       payment: {
         price: "1 HBAR",
-        payTo: "PLACEHOLDER_WALLET_ADDRESS",
+        payTo: "0.0.10381614",
         network: "hedera-testnet",
       },
     });
