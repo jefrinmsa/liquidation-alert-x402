@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liquidation Alert — Risk Monitor</title>
+  <meta name="description" content="Real-time liquidation risk monitoring dashboard with x402 payment-gated alerts">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Design Tokens ── */
+    :root {
+      --bg-base: #161B26;
+      --bg-surface: #1E2433;
+      --border: #2A3040;
+      --text-primary: #D8DBE4;
+      --text-muted: #7A8194;
+      --color-risk: #D44535;
+      --color-safe: #3D8B58;
+      --color-payment: #4B7FCC;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-sans: 'Inter', sans-serif;
+      --transition-speed: 300ms;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :root { --transition-speed: 0ms; }
+    }
+
+    /* ── Base ── */
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    .header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .header h1 {
+      font-family: var(--font-sans);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .header-status {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+
+    .divider--tight {
+      margin: 20px 0;
+    }
+
+    /* ── Section Labels ── */
+    .section-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Position Summary ── */
+    .wallet-address {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .health-factor-display {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .health-factor-label {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .health-factor-value {
+      font-family: var(--font-mono);
+      font-size: 72px;
+      font-weight: 700;
+      line-height: 1;
+      transition: color var(--transition-speed) ease;
+    }
+
+    .health-factor-value[data-risk="true"] { color: var(--color-risk); }
+    .health-factor-value[data-risk="false"] { color: var(--color-safe); }
+
+    /* ── Gauge ── */
+    .gauge {
+      position: relative;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      overflow: visible;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width var(--transition-speed) ease, background-color var(--transition-speed) ease;
+      min-width: 4px;
+    }
+
+    .gauge-fill[data-risk="true"] { background-color: var(--color-risk); }
+    .gauge-fill[data-risk="false"] { background-color: var(--color-safe); }
+
+    .gauge-marker {
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .gauge-marker-label {
+      position: absolute;
+      top: 14px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      transform: translateX(-50%);
+    }
+
+    .gauge-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 16px;
+    }
+
+    .gauge-endpoint {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* ── Values Row ── */
+    .values-row {
+      display: flex;
+      gap: 48px;
+      margin-top: 28px;
+    }
+
+    .value-block {}
+
+    .value-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .value-amount {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* ── Status ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      transition: background-color var(--transition-speed) ease;
+    }
+
+    .status-dot[data-risk="true"] { background-color: var(--color-risk); }
+    .status-dot[data-risk="false"] { background-color: var(--color-safe); }
+
+    .status-text {
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 600;
+      transition: color var(--transition-speed) ease;
+    }
+
+    .status-text[data-risk="true"] { color: var(--color-risk); }
+    .status-text[data-risk="false"] { color: var(--color-safe); }
+
+    /* ── Button ── */
+    .btn-simulate {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: border-color 150ms ease, color 150ms ease;
+      white-space: nowrap;
+    }
+
+    .btn-simulate:hover {
+      border-color: var(--text-muted);
+    }
+
+    .btn-simulate:active {
+      border-color: var(--text-primary);
+    }
+
+    .btn-simulate:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ── Payment Flow Log ── */
+    .log-area {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.8;
+      min-height: 120px;
+    }
+
+    .log-line {
+      opacity: 0;
+      animation: log-appear var(--transition-speed) ease forwards;
+    }
+
+    @keyframes log-appear {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .log-line { animation: none; opacity: 1; }
+    }
+
+    .log-prefix {
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    .log-line--request { color: var(--text-muted); }
+    .log-line--402 { color: var(--color-risk); }
+    .log-line--payment { color: var(--color-payment); }
+    .log-line--verify { color: var(--color-payment); }
+    .log-line--success { color: var(--color-safe); }
+    .log-line--info { color: var(--text-muted); }
+    .log-line--safe { color: var(--color-safe); }
+
+    .log-link {
+      color: var(--color-payment);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+
+    .log-link:hover {
+      border-bottom-color: var(--color-payment);
+    }
+
+    /* ── Empty / loading states ── */
+    .loading-text {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>Liquidation Alert</h1>
+      <span class="header-status" id="connectionStatus">connecting…</span>
+    </div>
+
+    <hr class="divider divider--tight">
+
+    <!-- Section 1: Position Summary -->
+    <p class="section-label">Position</p>
+
+    <p class="wallet-address" id="walletAddress">—</p>
+
+    <div class="health-factor-display">
+      <p class="health-factor-label">Health Factor</p>
+      <p class="health-factor-value" id="healthFactor" data-risk="false">—</p>
+    </div>
+
+    <!-- Gauge -->
+    <div class="gauge" id="gauge">
+      <div class="gauge-fill" id="gaugeFill" data-risk="false" style="width: 0%"></div>
+      <!-- 1.0 marker (liquidation line) -->
+      <div class="gauge-marker" id="gaugeMarker10" style="left: 50%">
+        <span class="gauge-marker-label">1.0</span>
+      </div>
+      <!-- 1.1 marker (at-risk threshold) -->
+      <div class="gauge-marker" id="gaugeMarker11" style="left: 55%">
+        <span class="gauge-marker-label">1.1</span>
+      </div>
+    </div>
+    <div class="gauge-labels">
+      <span class="gauge-endpoint">0.0</span>
+      <span class="gauge-endpoint">2.0+</span>
+    </div>
+
+    <!-- Values -->
+    <div class="values-row">
+      <div class="value-block">
+        <p class="value-label">Collateral</p>
+        <p class="value-amount" id="collateralValue">—</p>
+      </div>
+      <div class="value-block">
+        <p class="value-label">Debt</p>
+        <p class="value-amount" id="debtValue">—</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 2: Status + Trigger -->
+    <div class="status-row">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot" data-risk="false"></div>
+        <span class="status-text" id="statusText" data-risk="false">Loading…</span>
+      </div>
+      <button class="btn-simulate" id="btnSimulate" disabled>Simulate price drop</button>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Section 3: Payment Flow Log -->
+    <p class="section-label">Payment flow</p>
+    <div class="log-area" id="logArea">
+      <p class="loading-text">Waiting for data…</p>
+    </div>
+
+  </main>
+
+  <script>
+    // ── DOM Refs ──
+    const els = {
+      connectionStatus: document.getElementById('connectionStatus'),
+      walletAddress: document.getElementById('walletAddress'),
+      healthFactor: document.getElementById('healthFactor'),
+      gaugeFill: document.getElementById('gaugeFill'),
+      collateralValue: document.getElementById('collateralValue'),
+      debtValue: document.getElementById('debtValue'),
+      statusDot: document.getElementById('statusDot'),
+      statusText: document.getElementById('statusText'),
+      btnSimulate: document.getElementById('btnSimulate'),
+      logArea: document.getElementById('logArea'),
+    };
+
+    // ── State ──
+    let currentScenario = 'default'; // 'default' or 'risky'
+    let isAnimating = false;
+
+    // ── Helpers ──
+    function truncateAddress(addr) {
+      if (!addr || addr.length < 12) return addr || '—';
+      return addr.slice(0, 6) + '…' + addr.slice(-4);
+    }
+
+    function formatUSD(n) {
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0 });
+    }
+
+    function hfToGaugePercent(hf) {
+      // Map 0..2 to 0..100%, clamp at 100%
+      return Math.min(Math.max((hf / 2) * 100, 0), 100);
+    }
+
+    // ── Update UI from risk data ──
+    function updateDisplay(data) {
+      const isAtRisk = data.isAtRisk;
+      const hf = data.healthFactor;
+      const riskStr = String(isAtRisk);
+
+      // Wallet
+      els.walletAddress.textContent = truncateAddress(data.walletAddress);
+
+      // Health factor
+      els.healthFactor.textContent = hf >= 999 ? '∞' : hf.toFixed(2);
+      els.healthFactor.setAttribute('data-risk', riskStr);
+
+      // Gauge
+      els.gaugeFill.style.width = hfToGaugePercent(hf) + '%';
+      els.gaugeFill.setAttribute('data-risk', riskStr);
+
+      // Values
+      els.collateralValue.textContent = formatUSD(data.collateralValue);
+      els.debtValue.textContent = formatUSD(data.debtValue);
+
+      // Status
+      els.statusDot.setAttribute('data-risk', riskStr);
+      els.statusText.setAttribute('data-risk', riskStr);
+      els.statusText.textContent = isAtRisk ? 'At risk' : 'Safe';
+
+      // Connection
+      els.connectionStatus.textContent = 'live';
+    }
+
+    // ── Log system ──
+    function clearLog() {
+      els.logArea.innerHTML = '';
+    }
+
+    function appendLog(text, className) {
+      const line = document.createElement('p');
+      line.className = 'log-line ' + (className || '');
+      line.innerHTML = '<span class="log-prefix">&gt; </span>' + text;
+      els.logArea.appendChild(line);
+      // Auto-scroll
+      els.logArea.scrollTop = els.logArea.scrollHeight;
+    }
+
+    function appendLogDelayed(text, className, delayMs) {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          appendLog(text, className);
+          resolve();
+        }, delayMs);
+      });
+    }
+
+    // ── Fetch risk data ──
+    async function fetchRisk(params = '') {
+      const url = '/risk-alert' + (params ? '?' + params : '');
+      const response = await fetch(url);
+      const data = await response.json();
+      data._httpStatus = response.status;
+      return data;
+    }
+
+    // ── Initial load ──
+    async function initialLoad() {
+      clearLog();
+      appendLog('Requesting /risk-alert…', 'log-line--request');
+
+      try {
+        const data = await fetchRisk();
+        await appendLogDelayed(
+          data._httpStatus === 402
+            ? '402 Payment Required — position at risk'
+            : '200 OK — position safe',
+          data._httpStatus === 402 ? 'log-line--402' : 'log-line--safe',
+          400
+        );
+
+        updateDisplay(data);
+        els.btnSimulate.disabled = false;
+        currentScenario = data.isAtRisk ? 'risky' : 'default';
+
+        if (data.isAtRisk && data.payment) {
+          await appendLogDelayed(
+            `Price: ${data.payment.price} to ${truncateAddress(data.payment.payTo)}`,
+            'log-line--info',
+            300
+          );
+        }
+
+        await appendLogDelayed('Ready', 'log-line--info', 300);
+      } catch (err) {
+        appendLog('Failed to connect: ' + err.message, 'log-line--402');
+        els.connectionStatus.textContent = 'error';
+      }
+    }
+
+    // ── Simulate price drop / recovery ──
+    async function simulate() {
+      if (isAnimating) return;
+      isAnimating = true;
+      els.btnSimulate.disabled = true;
+
+      clearLog();
+
+      if (currentScenario === 'default' || currentScenario === 'safe') {
+        // Simulate a price DROP → risky scenario
+        appendLog('Simulating collateral price drop…', 'log-line--request');
+        await appendLogDelayed('Requesting /risk-alert?collateral=1800&debt=2000', 'log-line--request', 500);
+
+        try {
+          const data = await fetchRisk('collateral=1800&debt=2000');
+          await appendLogDelayed(
+            `${data._httpStatus} — Health Factor: ${data.healthFactor.toFixed(2)}`,
+            'log-line--402',
+            500
+          );
+
+          updateDisplay(data);
+
+          if (data.isAtRisk && data.payment) {
+            await appendLogDelayed(
+              `Payment required: ${data.payment.price}`,
+              'log-line--payment',
+              500
+            );
+            await appendLogDelayed(
+              `Pay to: ${data.payment.payTo} on ${data.payment.network}`,
+              'log-line--payment',
+              400
+            );
+            // Simulate the payment flow
+            await appendLogDelayed('Sending payment…', 'log-line--verify', 800);
+            await appendLogDelayed('Awaiting confirmation…', 'log-line--verify', 1200);
+
+            const fakeTxId = '0.0.4515938@' + Math.floor(Date.now() / 1000);
+            await appendLogDelayed(
+              `Tx confirmed: <a class="log-link" href="https://hashscan.io/testnet/transaction/${fakeTxId}" target="_blank" rel="noopener">${fakeTxId}</a>`,
+              'log-line--success',
+              600
+            );
+            await appendLogDelayed('Data unlocked', 'log-line--success', 400);
+          }
+
+          currentScenario = 'risky';
+          els.btnSimulate.textContent = 'Simulate recovery';
+        } catch (err) {
+          appendLog('Error: ' + err.message, 'log-line--402');
+        }
+      } else {
+        // Simulate RECOVERY → safe scenario
+        appendLog('Simulating collateral price recovery…', 'log-line--request');
+        await appendLogDelayed('Requesting /risk-alert?collateral=5000&debt=2000', 'log-line--request', 500);
+
+        try {
+          const data = await fetchRisk('collateral=5000&debt=2000');
+          await appendLogDelayed(
+            `${data._httpStatus} — Health Factor: ${data.healthFactor.toFixed(2)}`,
+            'log-line--safe',
+            500
+          );
+
+          updateDisplay(data);
+
+          await appendLogDelayed(
+            data.message || 'Position is safe — no payment required',
+            'log-line--safe',
+            400
+          );
+
+          currentScenario = 'safe';
+          els.btnSimulate.textContent = 'Simulate price drop';
+        } catch (err) {
+          appendLog('Error: ' + err.message, 'log-line--402');
+        }
+      }
+
+      isAnimating = false;
+      els.btnSimulate.disabled = false;
+    }
+
+    // ── Init ──
+    els.btnSimulate.addEventListener('click', simulate);
+    initialLoad();
+  </script>
+</body>
+</html>
