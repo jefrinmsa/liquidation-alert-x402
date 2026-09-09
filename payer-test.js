@@ -120,6 +120,34 @@ async function main() {
   console.log(`   Status:         ${receipt.status.toString()}`);
   console.log(`\n🔎 Verify on HashScan:`);
   console.log(`   https://hashscan.io/testnet/transaction/${txId}`);
+
+  // ── Step 6: Re-request with proof of payment ──────────────────────────
+  // Now we call /risk-alert again, but this time we include the transaction
+  // ID as a query parameter. This tells the server: "I already paid — here's
+  // the proof, now give me the real data."
+  //
+  // Hedera Transaction ID format:  0.0.ACCOUNTID@SECONDS.NANOSECONDS
+  //   - The payer account (0.0.10381614)
+  //   - An @ separator
+  //   - A Unix timestamp with nanosecond precision
+  // This makes every tx ID globally unique and human-readable.
+  console.log(`\n🔄 Step 6 — Re-requesting /risk-alert with payment proof...`);
+
+  const verifyUrl = `http://localhost:3000/risk-alert?tx=${encodeURIComponent(txId)}`;
+  console.log(`   URL: ${verifyUrl}`);
+
+  const verifyResponse = await fetch(verifyUrl);
+  const verifyBody = await verifyResponse.json();
+
+  console.log(`\n   HTTP status: ${verifyResponse.status}`);
+  console.log(`   Response:`, JSON.stringify(verifyBody, null, 2));
+
+  if (verifyResponse.status === 200) {
+    console.log(`\n🔓 Data unlocked! Payment verified by the server.`);
+  } else {
+    console.log(`\n⚠️  Server returned ${verifyResponse.status} — payment may still be propagating.`);
+    console.log(`   Wait a few seconds and try again, or check HashScan.`);
+  }
   console.log();
 }
 
