@@ -398,6 +398,8 @@
     // ── State ──
     let currentScenario = 'default'; // 'default' or 'risky'
     let isAnimating = false;
+    const POLL_INTERVAL_MS = 15000; // Auto-refresh every 15 seconds
+    let pollTimer = null;
 
     // ── Helpers ──
     function truncateAddress(addr) {
@@ -594,9 +596,27 @@
       els.btnSimulate.disabled = false;
     }
 
+    // ── Silent poll (updates display without touching the log) ──
+    async function silentPoll() {
+      if (isAnimating) return; // Don't interrupt animations
+      try {
+        const data = await fetchRisk();
+        updateDisplay(data);
+        currentScenario = data.isAtRisk ? 'risky' : 'default';
+        els.btnSimulate.textContent = data.isAtRisk ? 'Simulate recovery' : 'Simulate price drop';
+      } catch (err) {
+        els.connectionStatus.textContent = 'error';
+      }
+    }
+
+    function startPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(silentPoll, POLL_INTERVAL_MS);
+    }
+
     // ── Init ──
     els.btnSimulate.addEventListener('click', simulate);
-    initialLoad();
+    initialLoad().then(startPolling);
   </script>
 </body>
 </html>
